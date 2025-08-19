@@ -12,7 +12,7 @@ import 'package:al_marwa_water_app/views/bills/widgets/amount_field_widget.dart'
 import 'package:al_marwa_water_app/views/bills/widgets/quantity_rate.dart';
 import 'package:al_marwa_water_app/widgets/custom_elevated_button.dart';
 import 'package:al_marwa_water_app/widgets/custom_textform_field.dart';
-import 'package:dropdown_search/dropdownSearch.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -140,8 +140,10 @@ class _EditBillScreenState extends State<EditBillScreen> {
             '${customer.customerCode}. ${customer.personName}' ==
                 selectedCustomerName ||
             customer.customerCode == selectedCustomerName ||
-            (selectedCustomerName != null && customer.personName.contains(selectedCustomerName!)) ||
-            (selectedCustomerName != null && selectedCustomerName!.contains(customer.personName))) {
+            (selectedCustomerName != null &&
+                customer.personName.contains(selectedCustomerName!)) ||
+            (selectedCustomerName != null &&
+                selectedCustomerName!.contains(customer.personName))) {
           customerMatch = customer;
           break;
         }
@@ -151,9 +153,14 @@ class _EditBillScreenState extends State<EditBillScreen> {
     if (customerMatch == null || customerMatch.id == -1) {
       // If no match found, try a more flexible approach
       customerMatch = customers.firstWhere(
-        (c) => selectedCustomerName != null &&
-            (c.personName.toLowerCase().contains(selectedCustomerName!.toLowerCase()) ||
-                selectedCustomerName!.toLowerCase().contains(c.personName.toLowerCase())),
+        (c) =>
+            selectedCustomerName != null &&
+            (c.personName
+                    .toLowerCase()
+                    .contains(selectedCustomerName!.toLowerCase()) ||
+                selectedCustomerName!
+                    .toLowerCase()
+                    .contains(c.personName.toLowerCase())),
         orElse: () => CustomerData(
           id: -1,
           customerCode: '',
@@ -187,7 +194,7 @@ class _EditBillScreenState extends State<EditBillScreen> {
     if (customerMatch.id != -1) {
       setState(() {
         selectedCustomer = customerMatch;
-        selectedCustomerId = customerMatch.id;
+        selectedCustomerId = customerMatch!.id;
         selectedCustomerName = customerMatch.personName;
         trnController.text =
             customerMatch.trnNumber == "N/A" || customerMatch.trnNumber.isEmpty
@@ -205,7 +212,8 @@ class _EditBillScreenState extends State<EditBillScreen> {
           selectedCustomer = customers.first;
           selectedCustomerId = customers.first.id;
           selectedCustomerName = customers.first.personName;
-          trnController.text = customers.first.trnNumber == "N/A" || customers.first.trnNumber.isEmpty
+          trnController.text = customers.first.trnNumber == "N/A" ||
+                  customers.first.trnNumber.isEmpty
               ? ''
               : customers.first.trnNumber;
         });
@@ -248,7 +256,7 @@ class _EditBillScreenState extends State<EditBillScreen> {
 
     if (productMatch.id != null && productMatch.id! > 0) {
       setState(() {
-        selectedProductId = productMatch.id;
+        selectedProductId = productMatch!.id;
         selectedProduct = productMatch.name!;
         rateController.text = productMatch.price ?? '0';
       });
@@ -502,6 +510,7 @@ class _EditBillScreenState extends State<EditBillScreen> {
       onChanged: (CustomerData? newCustomer) {
         if (newCustomer != null) {
           setState(() {
+            print("object   ${newCustomer}");
             selectedCustomer = newCustomer;
             selectedCustomerId = newCustomer.id;
             selectedCustomerName = newCustomer.personName;

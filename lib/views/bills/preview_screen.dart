@@ -22,35 +22,11 @@ class _PreviewScreenState extends State<PreviewScreen> {
   final BlueThermalPrinter bluetooth = BlueThermalPrinter.instance;
   bool _isPrinting = false;
   BluetoothDevice? _selectedPrinter;
-  StreamSubscription<BluetoothState>? _bluetoothStateSubscription;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkBluetoothState();
-  }
-
-  @override
-  void dispose() {
-    _bluetoothStateSubscription?.cancel();
-    super.dispose();
-  }
-
-  void _checkBluetoothState() {
-    _bluetoothStateSubscription = bluetooth.onStateChanged().listen((state) {
-      if (state == BluetoothState.STATE_OFF) {
-        showSnackbar(
-          message: "Bluetooth is turned off. Please turn it on to print.",
-          isError: true,
-        );
-      }
-    });
-  }
 
   Future<void> _selectPrinter() async {
     try {
       List<BluetoothDevice> devices = await bluetooth.getBondedDevices();
-      
+
       if (devices.isEmpty) {
         showSnackbar(
           message: "No paired devices found.",
@@ -62,8 +38,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
       // Filter for likely printer devices (often contain "Printer" in name)
       List<BluetoothDevice> printers = devices.where((device) {
         return device.name?.toLowerCase().contains('printer') == true ||
-               device.name?.toLowerCase().contains('bt') == true ||
-               device.name?.toLowerCase().contains('pos') == true;
+            device.name?.toLowerCase().contains('bt') == true ||
+            device.name?.toLowerCase().contains('pos') == true;
       }).toList();
 
       if (printers.isEmpty) {
@@ -71,7 +47,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
         printers = devices;
       }
 
-      showDialog(
+      await showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: Text('Select Printer'),
@@ -84,7 +60,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                 final device = printers[index];
                 return ListTile(
                   title: Text(device.name ?? 'Unknown Device'),
-                  subtitle: Text(device.address),
+                  subtitle: Text(device.address!),
                   onTap: () {
                     Navigator.pop(context);
                     _selectedPrinter = device;
@@ -137,7 +113,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
       // Connect with timeout
       final Completer<bool> connectionCompleter = Completer<bool>();
-      
+
       // Set a timeout for connection
       Future.delayed(Duration(seconds: 10), () {
         if (!connectionCompleter.isCompleted) {
@@ -145,19 +121,19 @@ class _PreviewScreenState extends State<PreviewScreen> {
         }
       });
 
-      // Try to connect
-      bluetooth.connect(_selectedPrinter!).then((_) {
+      try {
+        await bluetooth.connect(_selectedPrinter!);
         if (!connectionCompleter.isCompleted) {
           connectionCompleter.complete(true);
         }
-      }).catchError((error) {
+      } catch (error) {
         if (!connectionCompleter.isCompleted) {
           connectionCompleter.complete(false);
         }
-      });
+      }
 
       bool connected = await connectionCompleter.future;
-      
+
       if (!connected) {
         showSnackbar(
           message: "Connection timeout. Please try again.",
@@ -235,7 +211,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
       // Add some delay before cutting
       await Future.delayed(Duration(milliseconds: 500));
       bluetooth.paperCut();
-      
+
       // Add delay before disconnecting
       await Future.delayed(Duration(milliseconds: 500));
       await bluetooth.disconnect();
@@ -244,14 +220,13 @@ class _PreviewScreenState extends State<PreviewScreen> {
         message: "Receipt printed successfully!",
         isError: false,
       );
-
     } catch (e) {
       log('Print Error: $e');
       showSnackbar(
         message: "Printing failed: $e",
         isError: true,
       );
-      
+
       // Try to disconnect if there was an error
       try {
         await bluetooth.disconnect();
@@ -271,7 +246,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
     final textTheme = theme.textTheme;
     final colorScheme = theme.colorScheme;
     final arguments = ModalRoute.of(context)?.settings.arguments;
-    
+
     if (arguments == null || arguments is! Bill) {
       return Scaffold(
         appBar: AppBar(
@@ -303,7 +278,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
         body: const Center(child: Text('No invoice data provided')),
       );
     }
-    
+
     final Bill bill = arguments;
     return Scaffold(
       appBar: AppBar(
@@ -436,7 +411,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     ),
                   ),
                 ),
-                
+
                 // Printer selection section
                 const SizedBox(height: 24),
                 if (_selectedPrinter != null)
@@ -461,7 +436,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     ),
                   ),
                 const SizedBox(height: 16),
-                
+
                 Row(
                   children: [
                     Expanded(
@@ -473,18 +448,20 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: CustomElevatedButton(
-                        onPressed: _isPrinting ? null : () async {
-                          await printReceipt(
-                            customerName: bill.customer,
-                            customerTRN: bill.trn,
-                            receiptNo: bill.siNumber,
-                            date: bill.date,
-                            totalAmount: bill.total.toStringAsFixed(2),
-                            product: bill.product,
-                            tax: bill.vatValue,
-                            vat: bill.vatValue,
-                          );
-                        },
+                        onPressed: _isPrinting
+                            ? () {}
+                            : () async {
+                                await printReceipt(
+                                  customerName: bill.customer,
+                                  customerTRN: bill.trn,
+                                  receiptNo: bill.siNumber,
+                                  date: bill.date,
+                                  totalAmount: bill.total.toStringAsFixed(2),
+                                  product: bill.product,
+                                  tax: bill.vatValue,
+                                  vat: bill.vatValue,
+                                );
+                              },
                         text: _isPrinting ? 'Printing...' : 'Print',
                       ),
                     ),

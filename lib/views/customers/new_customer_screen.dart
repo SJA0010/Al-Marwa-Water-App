@@ -1126,6 +1126,7 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
                       child: CustomElevatedButton(
                         text: "Print",
                         onPressed: () async {
+                          print("working");
                           await printReceipt(
                             amount: amountController.text.isNotEmpty
                                 ? amountController.text

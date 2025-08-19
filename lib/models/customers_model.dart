@@ -1,3 +1,4 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 class PaginatedCustomers {
   final List<CustomerData> customers;
   final int currentPage;
@@ -118,5 +119,10 @@ class CustomerData {
       id: parseInt(json['id']),
       customerCode: parseString(json['customer_code']),
     );
+  }
+
+  @override
+  String toString() {
+    return 'CustomerData(date: $date, customerType: $customerType, buildingName: $buildingName, blockNo: $blockNo, roomNo: $roomNo, phone1: $phone1, phone2: $phone2, deliveryDays: $deliveryDays, customerPayId: $customerPayId, bottleGiven: $bottleGiven, price: $price, paidDeposit: $paidDeposit, amount: $amount, personName: $personName, phone3: $phone3, phone4: $phone4, email: $email, tradeName: $tradeName, trnNumber: $trnNumber, authPersonName: $authPersonName, salePersonId: $salePersonId, createdAt: $createdAt, updatedAt: $updatedAt, id: $id, customerCode: $customerCode)';
   }
 }
