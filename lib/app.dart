@@ -13,7 +13,6 @@ import 'package:al_marwa_water_app/viewmodels/issue_bottle_controller.dart';
 import 'package:al_marwa_water_app/viewmodels/password_visibility_provider.dart';
 import 'package:al_marwa_water_app/viewmodels/pay_type_controller.dart';
 import 'package:al_marwa_water_app/viewmodels/products_controller.dart';
-import 'package:al_marwa_water_app/viewmodels/save_number_controller.dart';
 import 'package:al_marwa_water_app/viewmodels/vat_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:loader_overlay/loader_overlay.dart';
@@ -37,7 +36,6 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProductsTypeController()),
         ChangeNotifierProvider(create: (_) => CreditBillController()),
         ChangeNotifierProvider(create: (_) => SaleController()),
-        ChangeNotifierProvider(create: (_) => GoogleContactProvider()),
         ChangeNotifierProvider(create: (_) => VatProvider()),
         ChangeNotifierProvider(create: (_) => CustomerImageController()),
       ],

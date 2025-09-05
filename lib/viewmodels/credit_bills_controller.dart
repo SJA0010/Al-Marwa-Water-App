@@ -1,9 +1,7 @@
 import 'dart:developer';
 import 'dart:io';
 import 'package:al_marwa_water_app/core/constants/constants.dart';
-import 'package:al_marwa_water_app/core/constants/global_variable.dart';
 import 'package:al_marwa_water_app/core/utils/custom_snackbar.dart';
-import 'package:al_marwa_water_app/models/bills_model.dart';
 import 'package:al_marwa_water_app/models/create_credit_bill_model.dart';
 import 'package:al_marwa_water_app/models/get_credit_bill_model.dart';
 import 'package:al_marwa_water_app/models/hive_create_credit_model.dart';
@@ -19,6 +17,7 @@ class CreditBillController with ChangeNotifier {
   bool get isLoading => _isLoading;
   List<GetCreditBillItem> _creditBills = [];
   String? _error;
+  int? id;
 
   CreateCreditBillModel? _createBillResponse;
   CreateCreditBillModel? get createBillResponse => _createBillResponse;
@@ -45,39 +44,14 @@ class CreditBillController with ChangeNotifier {
         _createBillResponse = await _createBillRepository.createBill(billData);
 
         if (_createBillResponse?.status == true) {
+          _salesCode = _createBillResponse?.data.salesCode;
           print("12222${_createBillResponse!.data}");
-          StaticData().currentBill = Bill(
-            id: _createBillResponse!.data.id,
-            salesCode: _createBillResponse!.data.salesCode ?? '',
-            siNumber: _createBillResponse!.data.srNo ?? '',
-            date: _createBillResponse!.data.date ?? '',
-            customer: "${_createBillResponse!.data.customerId}", //
-            product: "${_createBillResponse!.data.productId}", //
-            trn: _createBillResponse!.data.trn ?? '',
-            isCreditBill: true,
-            vatValue: _createBillResponse!.data.vat,
-            quantity: double.tryParse(_createBillResponse!.data.quantity) ?? 0,
-            rate: double.tryParse(
-                    _createBillResponse!.data.rate?.toString() ?? "0") ?? //
-                0,
-            isVAT: true, //
-            total: double.tryParse(_createBillResponse!.data.amount) ?? 0, //
-          );
-
-          log("✅ Stored bill in StaticData: ${StaticData().currentBill}");
-          final current = StaticData().currentBill;
-          if (current != null) {
-            log("Got bill from StaticData: $current");
-          }
-
-          print(StaticData().currentBill);
-          showSnackbar(
-            message: _createBillResponse?.message ??
-                'Credit Bill created successfully',
-            isError: false,
-          );
-
-          log("✅ Credit Bill creation success: $_createBillResponse");
+          print("12222${_createBillResponse!.data.id}");
+          StaticData().currentBill = StaticData()
+              .currentBill
+              ?.copyWith(id: _createBillResponse!.data.id);
+          id = _createBillResponse!.data.id;
+          print(StaticData().currentBill?.id);
         } else {
           throw Exception(
               _createBillResponse?.message ?? 'Failed to create credit bill');

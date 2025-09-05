@@ -126,21 +126,26 @@ class CustomerImageController extends ChangeNotifier {
       );
 
       debugPrint("📦 Raw upload response: $result");
-      if (result is Map && result.containsKey("errors")) {
+      if (result.containsKey("errors")) {
         debugPrint("❌ Server errors: ${result['errors']}");
         showSnackbar(
           message: "Upload failed: ${result['errors']}",
           isError: true,
         );
+        debugPrint("❌ Upload failed: ${result['errors']}");
       } else {
         showSnackbar(
           message: result['message'] ?? "Image uploaded successfully",
         );
+        debugPrint("✅ Upload successful: ${result['message']}");
       }
     } catch (e, stack) {
       debugPrint("🔥 Upload exception: $e");
       debugPrint("📜 Stacktrace: $stack");
       showSnackbar(message: "Upload failed: $e", isError: true);
+      debugPrint(
+        "📜 Stacktrace: $stack || Upload failed: $e",
+      );
     } finally {
       isUploading = false;
       notifyListeners();

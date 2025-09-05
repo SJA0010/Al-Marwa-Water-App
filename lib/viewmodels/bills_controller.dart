@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:al_marwa_water_app/core/constants/constants.dart';
 import 'package:al_marwa_water_app/core/utils/custom_snackbar.dart';
-import 'package:al_marwa_water_app/models/bills_model.dart';
 import 'package:al_marwa_water_app/models/create_bill_model.dart';
 import 'package:al_marwa_water_app/models/get_bill_model.dart';
 import 'package:al_marwa_water_app/models/hive_create_bill_model.dart';
@@ -20,6 +19,7 @@ class BillController with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? _salesCode;
   String? get salesCode => _salesCode;
+  int? id;
 
   CreateBillResponseModel? _createBillResponse;
   CreateBillResponseModel? get createBillResponse => _createBillResponse;
@@ -58,24 +58,12 @@ class BillController with ChangeNotifier {
 
           if (_createBillResponse?.status == true) {
             print("12222${_createBillResponse!.data}");
-            StaticData().currentBill = Bill(
-              id: _createBillResponse!.data.id,
-              salesCode: _createBillResponse!.data.salesCode ?? '',
-              siNumber: _createBillResponse!.data.srNo ?? '',
-              date: _createBillResponse!.data.date ?? '',
-              customer: "${_createBillResponse!.data.customerId}", //
-              product: "${_createBillResponse!.data.productId}", //
-              trn: _createBillResponse!.data.trn ?? '',
-              isCreditBill: false,
-              vatValue: _createBillResponse!.data.vat,
-              quantity:
-                  double.tryParse(_createBillResponse!.data.quantity) ?? 0,
-              rate: double.tryParse(
-                      _createBillResponse!.data.rate?.toString() ?? "0") ?? //
-                  0,
-              isVAT: true, //
-              total: double.tryParse(_createBillResponse!.data.amount) ?? 0, //
-            );
+            print("12222${_createBillResponse!.data.id}");
+            StaticData().currentBill = StaticData()
+                .currentBill
+                ?.copyWith(id: _createBillResponse!.data.id);
+            id = _createBillResponse!.data.id;
+            print(StaticData().currentBill?.id);
           }
         } else {
           throw Exception(

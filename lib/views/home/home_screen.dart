@@ -58,13 +58,13 @@ class _HomeScreenState extends State<HomeScreen> {
       'screen': NewCustomerScreen(),
     },
     {
-      'icon': Icons.local_shipping,
+      'icon': Icons.local_drink_outlined,
       'label': 'Issue Bottle',
       'color': Colors.deepPurple,
       'screen': IssuesBottlesScreen(),
     },
     {
-      'icon': Icons.local_drink_outlined,
+      'icon': Icons.local_shipping,
       'label': 'Add Extra Bottle',
       'color': Colors.indigo,
       'screen': ComingSoonPage(),

@@ -28,15 +28,14 @@ class EditBillScreen extends StatefulWidget {
 class _EditBillScreenState extends State<EditBillScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController dateController = TextEditingController();
-  final TextEditingController newdateController = TextEditingController();
   final TextEditingController trnController = TextEditingController();
   final TextEditingController productController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController vatController = TextEditingController();
   final TextEditingController quantityController = TextEditingController();
-  final TextEditingController rateController = TextEditingController(text: '0');
+  final TextEditingController rateController = TextEditingController();
 
-  bool isVATChecked = true;
+  bool? isVATChecked;
   double totalAmount = 0.0;
   int? selectedProductId;
   String selectedProduct = '';
@@ -51,26 +50,42 @@ class _EditBillScreenState extends State<EditBillScreen> {
   void initState() {
     super.initState();
 
-    // Initialize with bill data
-    totalAmount = widget.bill.total;
+    totalAmount = double.tryParse(widget.bill.total) ?? 0.0;
+
     dateController.text = widget.bill.date;
-    newdateController.text = widget.bill.date;
+    dateController.text = widget.bill.date;
     trnController.text = widget.bill.trn;
     selectedCustomerName = widget.bill.customer;
+    vatController.text = widget.bill.vatValue;
     selectedProduct = widget.bill.product;
-    quantityController.text = widget.bill.quantity.toString();
-    rateController.text = widget.bill.rate.toString();
-    isVATChecked = widget.bill.isVAT;
-
-    // Add listeners
+    quantityController.text = widget.bill.quantity;
+    rateController.text = widget.bill.rate;
+    // isVATChecked = widget.bill.isVAT;
+    print(vatController.text);
+    if (vatController.text == "0" ||
+        vatController.text.isEmpty ||
+        vatController.text == "0%") {
+      isVATChecked = false;
+    } else {
+      isVATChecked = true;
+    }
     quantityController.addListener(_calculateAmount);
     rateController.addListener(_calculateAmount);
 
-    // Initialize data after widgets are built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeData();
     });
   }
+
+  // ---------- Added Helper Function for Date Parsing ----------
+  DateTime parseDate(String dateStr) {
+    try {
+      return DateFormat('yyyy-MM-dd').parse(dateStr);
+    } catch (_) {
+      return DateFormat('dd/MM/yyyy').parse(dateStr);
+    }
+  }
+  // -----------------------------------------------------------
 
   void _initializeData() async {
     customerController =
@@ -78,7 +93,6 @@ class _EditBillScreenState extends State<EditBillScreen> {
     productsTypeController =
         Provider.of<ProductsTypeController>(context, listen: false);
 
-    // Wait for data to load if needed
     if (customerController!.customers.isEmpty) {
       await customerController!.fetchCustomers(context);
     }
@@ -87,20 +101,16 @@ class _EditBillScreenState extends State<EditBillScreen> {
       await productsTypeController!.fetchProductTypes();
     }
 
-    // Debug print to see what data we have
     print("Bill customer: ${widget.bill.customer}");
     print("Bill product: ${widget.bill.product}");
     print("Available customers: ${customerController!.customers.length}");
     print("Available products: ${productsTypeController!.ProductTypes.length}");
 
-    // Find and set the selected customer - FIRST TRY TO MATCH BY ID
     final customers = customerController!.customers;
     CustomerData? customerMatch;
 
-    // Try to parse the customer field as an ID first
     int? customerId = int.tryParse(widget.bill.customer);
     if (customerId != null) {
-      // Try to find customer by ID
       customerMatch = customers.firstWhere(
         (c) => c.id == customerId,
         orElse: () => CustomerData(
@@ -133,7 +143,6 @@ class _EditBillScreenState extends State<EditBillScreen> {
       );
     }
 
-    // If not found by ID, try to match by name
     if (customerMatch == null || customerMatch.id == -1) {
       for (var customer in customers) {
         if (customer.personName == selectedCustomerName ||
@@ -151,7 +160,6 @@ class _EditBillScreenState extends State<EditBillScreen> {
     }
 
     if (customerMatch == null || customerMatch.id == -1) {
-      // If no match found, try a more flexible approach
       customerMatch = customers.firstWhere(
         (c) =>
             selectedCustomerName != null &&
@@ -196,45 +204,32 @@ class _EditBillScreenState extends State<EditBillScreen> {
         selectedCustomer = customerMatch;
         selectedCustomerId = customerMatch!.id;
         selectedCustomerName = customerMatch.personName;
-        trnController.text =
-            customerMatch.trnNumber == "N/A" || customerMatch.trnNumber.isEmpty
-                ? ''
-                : customerMatch.trnNumber;
       });
 
       print(
           "Selected customer: ${selectedCustomer!.personName}, ID: ${selectedCustomer!.id}");
     } else {
       print("Customer not found: $selectedCustomerName");
-      // Set default customer if not found
       if (customers.isNotEmpty) {
         setState(() {
           selectedCustomer = customers.first;
           selectedCustomerId = customers.first.id;
           selectedCustomerName = customers.first.personName;
-          trnController.text = customers.first.trnNumber == "N/A" ||
-                  customers.first.trnNumber.isEmpty
-              ? ''
-              : customers.first.trnNumber;
         });
       }
     }
 
-    // Find and set the selected product - FIRST TRY TO MATCH BY ID
     final products = productsTypeController!.ProductTypes;
     ProductsModel? productMatch;
 
-    // Try to parse the product field as an ID first
     int? productId = int.tryParse(widget.bill.product);
     if (productId != null) {
-      // Try to find product by ID
       productMatch = products.firstWhere(
         (p) => p.id == productId,
         orElse: () => ProductsModel(id: 0, name: '', price: '0'),
       );
     }
 
-    // If not found by ID, try to match by name
     if (productMatch == null || productMatch.id == 0) {
       for (var product in products) {
         if (product.name == selectedProduct) {
@@ -245,7 +240,6 @@ class _EditBillScreenState extends State<EditBillScreen> {
     }
 
     if (productMatch == null || productMatch.id == 0) {
-      // If no exact match, try a more flexible approach
       productMatch = products.firstWhere(
         (p) =>
             p.name != null &&
@@ -258,26 +252,20 @@ class _EditBillScreenState extends State<EditBillScreen> {
       setState(() {
         selectedProductId = productMatch!.id;
         selectedProduct = productMatch.name!;
-        rateController.text = productMatch.price ?? '0';
       });
 
       print("Selected product: $selectedProduct, ID: $selectedProductId");
     } else {
       print("Product not found: $selectedProduct");
-      // Set default product if not found
       if (products.isNotEmpty) {
         setState(() {
           selectedProductId = products.first.id;
           selectedProduct = products.first.name!;
-          rateController.text = products.first.price ?? '0';
         });
       }
     }
 
-    // Fetch VAT percentage
     await Provider.of<VatProvider>(context, listen: false).fetchVatPercentage();
-
-    // Calculate initial amount
     _calculateAmount();
 
     setState(() {
@@ -295,7 +283,7 @@ class _EditBillScreenState extends State<EditBillScreen> {
 
     setState(() {
       if (isVATChecked == true) {
-        amount += amount * (vat / 100); // Apply VAT as a percentage
+        amount += amount * (vat / 100);
       }
       totalAmount = amount;
     });
@@ -306,7 +294,7 @@ class _EditBillScreenState extends State<EditBillScreen> {
     final height = MediaQuery.of(context).size.height;
     final productsTypeController = Provider.of<ProductsTypeController>(context);
     final customerController = Provider.of<CustomerController>(context);
-
+    print(widget.bill);
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -406,7 +394,7 @@ class _EditBillScreenState extends State<EditBillScreen> {
                                         isVATChecked = val!;
                                         _calculateAmount();
 
-                                        if (isVATChecked) {
+                                        if (isVATChecked!) {
                                           vatController.text =
                                               "${vatProvider.vatPercentage}";
                                         } else {
@@ -447,6 +435,11 @@ class _EditBillScreenState extends State<EditBillScreen> {
                               listen: false,
                             );
 
+                            DateTime selectedDate =
+                                parseDate(dateController.text);
+
+                            dateController.text =
+                                selectedDate.toIso8601String().split('T').first;
                             final updatedData = {
                               "date": dateController.text,
                               "customer_id": "${selectedCustomerId ?? 0}",
@@ -454,8 +447,8 @@ class _EditBillScreenState extends State<EditBillScreen> {
                               "sale_user_id": provider.userId.toString(),
                               "trn": trnController.text,
                               "vat": isVATChecked == true
-                                  ? "${Provider.of<VatProvider>(context, listen: false).vatPercentage}%"
-                                  : "0%",
+                                  ? "${Provider.of<VatProvider>(context, listen: false).vatPercentage}"
+                                  : "0",
                               "quantity": quantityController.text,
                               "rate": rateController.text,
                               "amount": totalAmount.toStringAsFixed(2),
@@ -514,10 +507,8 @@ class _EditBillScreenState extends State<EditBillScreen> {
             selectedCustomer = newCustomer;
             selectedCustomerId = newCustomer.id;
             selectedCustomerName = newCustomer.personName;
-            rateController.text =
-                newCustomer.price == 'N/A' ? '' : newCustomer.price;
-            trnController.text =
-                newCustomer.trnNumber == 'N/A' ? '' : newCustomer.trnNumber;
+            rateController.text = newCustomer.price;
+            trnController.text = newCustomer.trnNumber;
           });
         }
       },
@@ -632,7 +623,6 @@ class _EditBillScreenState extends State<EditBillScreen> {
               (e) => e.name == selectedProduct,
               orElse: () => ProductsModel(price: '0'),
             );
-            rateController.text = selected.price ?? '0';
             selectedProductId = selected.id ?? 0;
           });
         }

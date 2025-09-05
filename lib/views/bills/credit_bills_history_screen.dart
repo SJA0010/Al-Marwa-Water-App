@@ -249,6 +249,8 @@ class _CreditBillsHistoryScreenState extends State<CreditBillsHistoryScreen> {
                                 return InkWell(
                                   onTap: () {
                                     final previewBill = Bill(
+                                      customerName: bill.customerName,
+                                      productName: bill.productName,
                                       id: bill.id,
                                       salesCode: bill.salesCode,
                                       siNumber: bill.srNo,
@@ -257,11 +259,14 @@ class _CreditBillsHistoryScreenState extends State<CreditBillsHistoryScreen> {
                                       product: bill.productName,
                                       vatValue: bill.vat,
                                       trn: bill.trn,
-                                      quantity:
-                                          double.tryParse(bill.quantity) ?? 0,
-                                      rate: double.tryParse(bill.rate) ?? 0,
-                                      isVAT: bill.vat.isNotEmpty,
-                                      total: double.tryParse(bill.amount) ?? 0,
+                                      quantity: bill.quantity,
+                                      rate: bill.rate,
+                                      isVAT: (bill.vat == "0" ||
+                                              bill.vat == "0%" ||
+                                              bill.vat.isEmpty)
+                                          ? false
+                                          : true,
+                                      total: bill.amount,
                                       isCreditBill: true,
                                     );
 

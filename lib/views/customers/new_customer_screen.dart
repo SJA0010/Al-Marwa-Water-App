@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:al_marwa_water_app/core/utils/custom_snackbar.dart';
 import 'package:al_marwa_water_app/models/customer_type_model.dart';
 import 'package:al_marwa_water_app/models/pay_type.dart';
@@ -7,10 +10,9 @@ import 'package:al_marwa_water_app/viewmodels/customer_controller.dart';
 import 'package:al_marwa_water_app/viewmodels/customer_type_controller.dart';
 import 'package:al_marwa_water_app/viewmodels/image_controller.dart';
 import 'package:al_marwa_water_app/viewmodels/pay_type_controller.dart';
-import 'package:al_marwa_water_app/viewmodels/save_number_controller.dart';
 import 'package:al_marwa_water_app/widgets/custom_elevated_button.dart';
-import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:intl/intl.dart';
 import 'package:loader_overlay/loader_overlay.dart';
 import 'package:provider/provider.dart';
@@ -66,68 +68,6 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
   bool? isCoupon; // Change to false to disable the button
   final TextEditingController _remarksController = TextEditingController();
 
-  final BlueThermalPrinter bluetooth = BlueThermalPrinter.instance;
-  Future<void> printReceipt({
-    required int salesCode,
-    required String tradeName,
-    required String buildingName,
-    required String blockName,
-    required String roomName,
-    required String bottleGiven,
-    required String paidDeposit,
-    required String amount,
-    required String customerTRN,
-  }) async {
-    try {
-      List<BluetoothDevice> devices = await bluetooth.getBondedDevices();
-      if (devices.isEmpty) {
-        print("No paired devices.");
-        showSnackbar(
-          message: "No paired devices found.",
-          isError: true,
-        );
-        return;
-      }
-
-      BluetoothDevice printer = devices.first;
-      await bluetooth.connect(printer);
-
-      bluetooth.printNewLine();
-
-      // Header
-      bluetooth.printCustom("Al Marwa Water", 4, 1);
-      bluetooth.printNewLine();
-      bluetooth.printCustom("TRN: $customerTRN", 1, 1);
-      bluetooth.printCustom("Phone: +971-12-1234567", 1, 1);
-      bluetooth.printNewLine();
-      bluetooth.printCustom("--------------------------------", 1, 1);
-      bluetooth.printNewLine();
-
-      bluetooth.printCustom("Sales Code #: $salesCode", 1, 0);
-      bluetooth.printCustom("Building #    : $buildingName", 1, 0);
-      bluetooth.printCustom("Trade Name        : $tradeName", 1, 0);
-      bluetooth.printCustom("block #        : $blockName", 1, 0);
-      bluetooth.printCustom("room #        : $roomName", 1, 0);
-      bluetooth.printCustom("bottle given        : $bottleGiven", 1, 0);
-      bluetooth.printCustom("paid deposit        : $paidDeposit ", 1, 0);
-
-      bluetooth.printCustom("amount        : $amount", 1, 0);
-
-      bluetooth.printNewLine();
-      // Footer
-      bluetooth.printCustom("--------------------------------", 1, 1);
-      bluetooth.printNewLine();
-
-      bluetooth.printCustom("Thank you for your purchase!", 1, 1);
-      bluetooth.printCustom("AL-MARWA", 2, 1);
-      bluetooth.printCustom("Downtown Dubai, UAE", 1, 1);
-
-      bluetooth.printNewLine();
-      bluetooth.paperCut();
-      bluetooth.disconnect();
-    } catch (e) {}
-  }
-
   void _showRemarksDialog() {
     showDialog(
       context: context,
@@ -155,8 +95,42 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
     );
   }
 
+  Future<void> _saveContact(
+      {required String name, required String phone}) async {
+    // Step 1: Request permission
+    if (await FlutterContacts.requestPermission()) {
+      // Step 2: Create static contact
+      final contact = Contact()
+        ..name.first = name
+        ..phones = [Phone(phone)];
+
+      // Step 3: Insert into phone contacts
+      await contact.insert();
+
+      debugPrint("✅ Contact saved successfully!");
+    } else {
+      debugPrint("❌ Permission denied to access contacts.");
+    }
+  }
+
+  Future<bool> hasInternet() async {
+    try {
+      final result = await InternetAddress.lookup('example.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool isNet = true;
+
   @override
   void initState() {
+    hasInternet().then((value) {
+      setState(() {
+        isNet = value;
+      });
+    });
     super.initState();
     createCustomerController.text = DateFormat(
       'dd/MM/yyyy',
@@ -201,7 +175,6 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
     );
     final authController = Provider.of<AuthController>(context, listen: false);
     final payTypeController = Provider.of<PayTypeController>(context);
-    final contactController = Provider.of<GoogleContactProvider>(context);
     final imageController = Provider.of<CustomerImageController>(context);
 
     return Scaffold(
@@ -673,28 +646,31 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
                                 keyboardType: TextInputType.text,
                               ),
                               const SizedBox(height: 16),
-                              CustomElevatedButton(
-                                buttonColor: colorScheme.surface,
-                                borderColor: colorScheme.secondary,
-                                textStyle: TextStyle(
-                                  color: colorScheme.secondary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                                text: imageController.selectedImage != null
-                                    ? "Image Selected"
-                                    : "Pick Image",
-                                onPressed: () async {
-                                  // Just pick the image and store it in provider
-                                  final file =
-                                      await ImagePickerHelper.pickImage(
-                                          context);
-                                  if (file != null) {
-                                    imageController.setSelectedImage(
-                                        file); // Store for later upload
-                                  }
-                                },
-                              ),
+                              isNet == true
+                                  ? CustomElevatedButton(
+                                      buttonColor: colorScheme.surface,
+                                      borderColor: colorScheme.secondary,
+                                      textStyle: TextStyle(
+                                        color: colorScheme.secondary,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                      text:
+                                          imageController.selectedImage != null
+                                              ? "Image Selected"
+                                              : "Pick Image",
+                                      onPressed: () async {
+                                        // Just pick the image and store it in provider
+                                        final file =
+                                            await ImagePickerHelper.pickImage(
+                                                context);
+                                        if (file != null) {
+                                          imageController.setSelectedImage(
+                                              file); // Store for later upload
+                                        }
+                                      },
+                                    )
+                                  : SizedBox.shrink()
                             ],
                           ),
                         ),
@@ -912,30 +888,31 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
                                     customerData,
                                     context,
                                   );
-                                  if (imageController.selectedImage != null &&
-                                      customerController.customerCreateID !=
-                                          null) {
-                                    await imageController.uploadImage(
-                                      customerId:
-                                          customerController.customerCreateID!,
-                                      imageFile: imageController.selectedImage!,
-                                      context: context,
-                                    );
-                                  } else {
-                                    showSnackbar(
-                                        message: "No image selected",
-                                        isError: true);
+                                  if (isNet == true) {
+                                    if (imageController.selectedImage != null &&
+                                        customerController.customerCreateID !=
+                                            null) {
+                                      await imageController.uploadImage(
+                                        customerId: customerController
+                                            .customerCreateID!,
+                                        imageFile:
+                                            imageController.selectedImage!,
+                                        context: context,
+                                      );
+                                    } else {
+                                      showSnackbar(
+                                          message: "No image selected",
+                                          isError: true);
+                                    }
                                   }
                                   contactName =
                                       "${buildingController.text} ${blockController.text} ${roomController.text}";
 
-                                  // Save Google contact
+                                  // Save contact
+                                  _saveContact(
+                                      name: contactName ?? "conatact",
+                                      phone: mobile1Controller.text);
 
-                                  contactController.createGoogleContact(
-                                    name: contactName ?? "conatact",
-                                    phoneNumber: mobile1Controller.text,
-                                    context: context,
-                                  );
                                   customerCodeController.clear();
 
                                   buildingController.clear();
@@ -987,7 +964,6 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
                                   final customerData = {
                                     "date": newdateController.text,
                                     "customer_type": "$selectedCustomerId",
-
                                     // "$selectedCustomerId" ?? "",
                                     "building_name":
                                         buildingController.text.isNotEmpty
@@ -1053,31 +1029,29 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
                                     customerData,
                                     context,
                                   );
-                                  if (imageController.selectedImage != null &&
-                                      customerController.customerCreateID !=
-                                          null) {
-                                    await imageController.uploadImage(
-                                      customerId:
-                                          customerController.customerCreateID!,
-                                      imageFile: imageController.selectedImage!,
-                                      context: context,
-                                    );
-                                  } else {
-                                    showSnackbar(
-                                        message: "No image selected",
-                                        isError: true);
+                                  if (isNet == true) {
+                                    if (imageController.selectedImage != null &&
+                                        customerController.customerCreateID !=
+                                            null) {
+                                      await imageController.uploadImage(
+                                        customerId: customerController
+                                            .customerCreateID!,
+                                        imageFile:
+                                            imageController.selectedImage!,
+                                        context: context,
+                                      );
+                                    } else {
+                                      showSnackbar(
+                                          message: "No image selected",
+                                          isError: true);
+                                    }
                                   }
                                   contactName =
                                       "${buildingController.text} ${blockController.text} ${roomController.text}";
-
-                                  // Save Google contact
-
-                                  contactController.createGoogleContact(
-                                    name: contactName ?? "conatact",
-                                    phoneNumber: mobile1Controller.text,
-                                    context: context,
-                                  );
-
+                                  // Save contact
+                                  _saveContact(
+                                      name: contactName ?? "conatact",
+                                      phone: mobile1Controller.text);
                                   customerCodeController.clear();
 
                                   buildingController.clear();
@@ -1120,92 +1094,42 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: CustomElevatedButton(
-                        text: "Print",
-                        onPressed: () async {
-                          print("working");
-                          await printReceipt(
-                            amount: amountController.text.isNotEmpty
-                                ? amountController.text
-                                : "0",
-                            blockName: blockController.text.isNotEmpty
-                                ? blockController.text
-                                : "N/A",
-                            buildingName: buildingController.text.isNotEmpty
-                                ? buildingController.text
-                                : "N/A",
-                            bottleGiven: bottleController.text.isNotEmpty
-                                ? bottleController.text
-                                : "0",
-                            customerTRN: trnNumberController.text.isNotEmpty
-                                ? trnNumberController.text
-                                : "N/A",
-                            paidDeposit: _depositPaid,
-                            roomName: roomController.text.isNotEmpty
-                                ? roomController.text
-                                : "N/A",
-                            tradeName: tradeNameController.text.isNotEmpty
-                                ? tradeNameController.text
-                                : "N/A",
-                            salesCode: authController.userId ?? 0,
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    _currentIndex == 0
-                        ? Expanded(
-                            child: CustomElevatedButton(
-                              text: "Next",
-                              onPressed: () {
-                                if (_formKey1.currentState!.validate()) {
-                                  if (selectedPayTypeId == null) {
-                                    showSnackbar(
-                                      message: "Please select a payment type",
-                                      isError: true,
-                                    );
-                                  } else {
-                                    setState(() {
-                                      _currentIndex++;
-                                    });
-                                  }
-                                } else {
-                                  showSnackbar(
-                                    message: "Please fill all required fields",
-                                    isError: true,
-                                  );
-                                }
-                              },
-                            ),
-                          )
-                        : Expanded(
-                            child: CustomElevatedButton(
-                              text: "Previous",
-                              onPressed: () {
+                _currentIndex == 0
+                    ? Expanded(
+                        child: CustomElevatedButton(
+                          text: "Next",
+                          onPressed: () {
+                            if (_formKey1.currentState!.validate()) {
+                              if (selectedPayTypeId == null) {
+                                showSnackbar(
+                                  message: "Please select a payment type",
+                                  isError: true,
+                                );
+                              } else {
                                 setState(() {
-                                  _currentIndex--;
+                                  _currentIndex++;
                                 });
-                              },
-                            ),
-                          ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // CustomElevatedButton(
-                //   text: "save",
-                //   onPressed: () {
-                //     contactController.createGoogleContact(
-                //       name: "new contacvts 11",
-                //       phoneNumber: "+92331736433 ",
-                //       context: context,
-                //     );
-                //   },
-                // ),
-                const SizedBox(height: 40),
+                              }
+                            } else {
+                              showSnackbar(
+                                message: "Please fill all required fields",
+                                isError: true,
+                              );
+                            }
+                          },
+                        ),
+                      )
+                    : Expanded(
+                        child: CustomElevatedButton(
+                          text: "Previous",
+                          onPressed: () {
+                            setState(() {
+                              _currentIndex--;
+                            });
+                          },
+                        ),
+                      ),
+               const SizedBox(height: 40),
               ],
             ),
           ),

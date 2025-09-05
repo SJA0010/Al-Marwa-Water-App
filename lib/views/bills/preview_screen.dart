@@ -1,15 +1,12 @@
 import 'dart:async';
 import 'dart:developer';
-
 import 'package:al_marwa_water_app/core/constants/app_images.dart';
 import 'package:al_marwa_water_app/core/utils/custom_snackbar.dart';
 import 'package:al_marwa_water_app/models/bills_model.dart';
 import 'package:al_marwa_water_app/routes/app_routes.dart';
-import 'package:al_marwa_water_app/viewmodels/vat_controller.dart';
 import 'package:al_marwa_water_app/widgets/custom_elevated_button.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 class PreviewScreen extends StatefulWidget {
   const PreviewScreen({super.key});
@@ -192,8 +189,16 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
       // Product Info
       bluetooth.printCustom("Product : $product", 1, 0);
-      bluetooth.printCustom("Tax     : $tax%", 1, 0);
-      bluetooth.printCustom("VAT     : $vat%", 1, 0);
+      if (tax.contains("%%") || !tax.contains("%")) {
+        bluetooth.printCustom("Tax     : $tax%", 1, 0);
+      } else {
+        bluetooth.printCustom("Tax     : $tax", 1, 0);
+      }
+      if (vat.contains("%%") || !vat.contains("%")) {
+        bluetooth.printCustom("VAT     : $vat%", 1, 0);
+      } else {
+        bluetooth.printCustom("VAT     : $vat", 1, 0);
+      }
       bluetooth.printNewLine();
 
       bluetooth.printCustom("Total: AED $totalAmount", 2, 1);
@@ -280,6 +285,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
     }
 
     final Bill bill = arguments;
+    print(bill);
+
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -346,25 +353,23 @@ class _PreviewScreenState extends State<PreviewScreen> {
                 ),
                 const Divider(height: 24),
                 _infoRow('SI NO.', bill.siNumber, textTheme),
-                _infoRow('CUSTOMER NAME.', bill.customer, textTheme),
+                _infoRow('CUSTOMER NAME.', bill.customerName, textTheme),
                 _infoRow('SALES CODE', bill.salesCode, textTheme),
-                _infoRow('PRODUCT', bill.product, textTheme),
-                _infoRow('QUANTITY', bill.quantity.toString(), textTheme),
+                _infoRow('PRODUCT', bill.productName, textTheme),
+                _infoRow('QUANTITY', bill.quantity, textTheme),
                 _infoRow(
                   'RATE',
-                  'AED ${bill.rate.toStringAsFixed(2)}',
+                  'AED ${bill.rate}',
                   textTheme,
                 ),
-                if (bill.isVAT)
-                  _infoRow(
-                    'VAT',
-                    bill.isCreditBill
-                        ? '${bill.vatValue}%'
-                        : Provider.of<VatProvider>(context, listen: false)
-                            .vatPercentage
-                            .toString(),
-                    textTheme,
-                  ),
+
+                _infoRow(
+                  'VAT',
+                  (bill.vatValue.contains("%%") || !bill.vatValue.contains("%"))
+                      ? "${bill.vatValue}%"
+                      : "${bill.vatValue}",
+                  textTheme,
+                ),
                 const SizedBox(height: 12),
                 Container(
                   width: double.infinity,
@@ -374,7 +379,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    'GRAND TOTAL: AED ${bill.total.toStringAsFixed(2)}',
+                    'GRAND TOTAL: AED ${bill.total}',
                     style: textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: Colors.green.shade700,
@@ -452,12 +457,12 @@ class _PreviewScreenState extends State<PreviewScreen> {
                             ? () {}
                             : () async {
                                 await printReceipt(
-                                  customerName: bill.customer,
+                                  customerName: bill.customerName,
                                   customerTRN: bill.trn,
                                   receiptNo: bill.siNumber,
                                   date: bill.date,
-                                  totalAmount: bill.total.toStringAsFixed(2),
-                                  product: bill.product,
+                                  totalAmount: bill.total,
+                                  product: bill.productName,
                                   tax: bill.vatValue,
                                   vat: bill.vatValue,
                                 );

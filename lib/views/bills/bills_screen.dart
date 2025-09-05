@@ -73,6 +73,8 @@ class _BillsScreenState extends State<BillsScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   @override
   void initState() {
+    isVATChecked = true;
+
     super.initState();
     quantityController.addListener(_calculateAmount);
     rateController.addListener(_calculateAmount);
@@ -445,7 +447,7 @@ class _BillsScreenState extends State<BillsScreen> {
                                 'product_id': selectedProductId,
                                 'trn': trnController.text,
                                 'vat': isVATChecked == true
-                                    ? "${vatController.text}%"
+                                    ? "${vatProvider.vatPercentage}%"
                                     : "0%",
                                 'quantity': quantityController.text,
                                 'rate': rateController.text,
@@ -458,25 +460,27 @@ class _BillsScreenState extends State<BillsScreen> {
                                 listen: false,
                               );
                               await controller.createBill(context, billData);
-                              savedBill = Bill(
+                              print(
+                                  "-----------------------${selectedCustomer?.personName ?? ""}");
+                              StaticData().currentBill = Bill(
+                                customerName:
+                                    selectedCustomer?.personName ?? "",
+                                productName: selectedProduct,
+                                trn: trnController.text,
+                                vatValue: isVATChecked
+                                    ? "${vatProvider.vatPercentage}"
+                                    : "0",
+                                quantity: quantityController.text,
                                 salesCode: billController.salesCode ?? '',
                                 siNumber: billController.salesCode ?? '',
                                 date: dateController.text,
                                 customer: selectedCustomer?.personName ?? '',
                                 product: "$selectedProductId",
                                 isCreditBill: false,
-                                vatValue: isVATChecked
-                                    ? "${vatController.text}%"
-                                    : "0%",
-                                trn: trnController.text,
-                                quantity:
-                                    double.tryParse(quantityController.text) ??
-                                        0,
-                                rate: double.tryParse(rateController.text) ?? 0,
+                                rate: rateController.text,
                                 isVAT: isVATChecked,
-                                total: totalAmount,
+                                total: "$totalAmount",
                               );
-
                               // Clear form fields
                               dateController.clear();
                               trnController.clear();
@@ -517,19 +521,17 @@ class _BillsScreenState extends State<BillsScreen> {
                           ),
                           onPressed: isPreview
                               ? () {
-                                  if (savedBill != null) {
-                                    final current = StaticData().currentBill;
-                                    if (current == null) {
-                                      log("⚠️ currentBill is null, cannot save.");
-                                      return;
-                                    }
+                                  final current = StaticData().currentBill;
+                                  if (current != null) {
                                     savedBill = Bill(
-                                      id: current.id,
+                                      id: billController.id,
                                       salesCode: current.salesCode,
                                       siNumber: current.siNumber,
                                       date: current.date,
                                       customer: current.customer,
                                       product: current.product,
+                                      customerName: current.customerName,
+                                      productName: current.productName,
                                       trn: current.trn,
                                       isCreditBill: current.isCreditBill,
                                       vatValue: current.vatValue,
@@ -541,8 +543,9 @@ class _BillsScreenState extends State<BillsScreen> {
                                     Navigator.pushNamed(
                                       context,
                                       AppRoutes.previewScreen,
-                                      arguments: current,
+                                      arguments: savedBill,
                                     );
+                                    print("-----------------$savedBill}");
                                   } else {
                                     showSnackbar(
                                       message: "No bill data found!",

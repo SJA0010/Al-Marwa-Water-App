@@ -80,6 +80,7 @@ class _CreditBillsScreenState extends State<CreditBillsScreen> {
   @override
   void initState() {
     super.initState();
+    isVATChecked = true;
     quantityController.addListener(_calculateAmount);
     rateController.addListener(_calculateAmount);
     vatController.addListener(_calculateAmount);
@@ -91,13 +92,15 @@ class _CreditBillsScreenState extends State<CreditBillsScreen> {
   void _calculateAmount() {
     final quantity = double.tryParse(quantityController.text) ?? 0.0;
     final rate = double.tryParse(rateController.text) ?? 0.0;
-    final vat = double.tryParse(vatController.text) ?? 0.0;
+
+    final vat = Provider.of<VatProvider>(context, listen: false).vatPercentage;
+
     double amount = quantity * rate;
-    if (isVATChecked) {
-      amount += vat;
-    }
 
     setState(() {
+      if (isVATChecked == true) {
+        amount += amount * (vat / 100); // Apply VAT as a percentage
+      }
       totalAmount = amount;
     });
   }
@@ -110,6 +113,9 @@ class _CreditBillsScreenState extends State<CreditBillsScreen> {
     print("${productsTypeController.ProductTypeNames}");
     Theme.of(context);
 
+    final controller = Provider.of<CreditBillController>(
+      context,
+    );
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -445,7 +451,7 @@ class _CreditBillsScreenState extends State<CreditBillsScreen> {
                                 'product_id': selectedProductId,
                                 'trn': trnController.text,
                                 'vat': isVATChecked == true
-                                    ? "${vatController.text}%"
+                                    ? "${vatProvider.vatPercentage}%"
                                     : "0%",
                                 'quantity': quantityController.text,
                                 'rate': rateController.text,
@@ -453,16 +459,31 @@ class _CreditBillsScreenState extends State<CreditBillsScreen> {
                                 'sale_user_id': "${authController.userId}",
                               };
 
-                              final controller =
-                                  Provider.of<CreditBillController>(
-                                context,
-                                listen: false,
-                              );
                               await controller.createCreditBill(
                                 context,
                                 billData,
                               );
 
+                              StaticData().currentBill = Bill(
+                                id: controller.id,
+                                customerName:
+                                    selectedCustomer?.personName ?? "",
+                                productName: selectedProduct,
+                                trn: trnController.text,
+                                vatValue: isVATChecked
+                                    ? "${vatProvider.vatPercentage}"
+                                    : "0",
+                                quantity: quantityController.text,
+                                salesCode: controller.salesCode ?? '',
+                                siNumber: controller.salesCode ?? '',
+                                date: dateController.text,
+                                customer: selectedCustomer?.personName ?? '',
+                                product: "$selectedProductId",
+                                isCreditBill: true,
+                                rate: rateController.text,
+                                isVAT: isVATChecked,
+                                total: "$totalAmount",
+                              );
                               // Clear form fields
                               dateController.clear();
                               trnController.clear();
@@ -504,32 +525,30 @@ class _CreditBillsScreenState extends State<CreditBillsScreen> {
                           onPressed: isPreview
                               ? () {
                                   final current = StaticData().currentBill;
-                                  if (current == null) {
-                                    log("⚠️ currentBill is null, cannot save.");
-                                    return;
-                                  }
-                                  savedBill = Bill(
-                                    id: current.id,
-                                    salesCode: current.salesCode,
-                                    siNumber: current.siNumber,
-                                    date: current.date,
-                                    customer: current.customer,
-                                    product: current.product,
-                                    trn: current.trn,
-                                    isCreditBill: current.isCreditBill,
-                                    vatValue: current.vatValue,
-                                    quantity: current.quantity,
-                                    rate: current.rate,
-                                    isVAT: current.isVAT,
-                                    total: current.total,
-                                  );
-
-                                  if (savedBill != null) {
+                                  if (current != null) {
+                                    savedBill = Bill(
+                                      id: controller.id,
+                                      salesCode: controller.salesCode ?? '',
+                                      siNumber: controller.salesCode ?? '',
+                                      date: current.date,
+                                      customer: current.customer,
+                                      product: current.product,
+                                      customerName: current.customerName,
+                                      productName: current.productName,
+                                      trn: current.trn,
+                                      isCreditBill: current.isCreditBill,
+                                      vatValue: current.vatValue,
+                                      quantity: current.quantity,
+                                      rate: current.rate,
+                                      isVAT: current.isVAT,
+                                      total: current.total,
+                                    );
                                     Navigator.pushNamed(
                                       context,
                                       AppRoutes.previewScreen,
-                                      arguments: current,
+                                      arguments: savedBill,
                                     );
+                                    print("-----------------$savedBill}");
                                   } else {
                                     showSnackbar(
                                       message: "No bill data found!",

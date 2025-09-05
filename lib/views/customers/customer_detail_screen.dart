@@ -1,6 +1,12 @@
+import 'dart:async';
+import 'dart:developer';
+
+import 'package:al_marwa_water_app/core/utils/custom_snackbar.dart';
 import 'package:al_marwa_water_app/models/customers_model.dart';
 import 'package:al_marwa_water_app/routes/app_routes.dart';
 import 'package:al_marwa_water_app/viewmodels/bottle_history_controller.dart';
+import 'package:al_marwa_water_app/widgets/custom_elevated_button.dart';
+import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -23,6 +29,264 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     if (saleController == null) {
       saleController = Provider.of<SaleController>(context);
       saleController!.getSalesByCustomerId(widget.customer.id);
+    }
+  }
+
+  final BlueThermalPrinter bluetooth = BlueThermalPrinter.instance;
+  bool _isPrinting = false;
+  BluetoothDevice? _selectedPrinter;
+
+  Future<void> _selectPrinter() async {
+    try {
+      List<BluetoothDevice> devices = await bluetooth.getBondedDevices();
+
+      if (devices.isEmpty) {
+        showSnackbar(
+          message: "No paired devices found.",
+          isError: true,
+        );
+        return;
+      }
+
+      // Filter for likely printer devices (often contain "Printer" in name)
+      List<BluetoothDevice> printers = devices.where((device) {
+        return device.name?.toLowerCase().contains('printer') == true ||
+            device.name?.toLowerCase().contains('bt') == true ||
+            device.name?.toLowerCase().contains('pos') == true;
+      }).toList();
+
+      if (printers.isEmpty) {
+        // If no obvious printers, show all devices
+        printers = devices;
+      }
+
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Select Printer'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: printers.length,
+              itemBuilder: (context, index) {
+                final device = printers[index];
+                return ListTile(
+                  title: Text(device.name ?? 'Unknown Device'),
+                  subtitle: Text(device.address!),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _selectedPrinter = device;
+                    showSnackbar(
+                      message: "Selected printer: ${device.name}",
+                      isError: false,
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      log('Error selecting printer: $e');
+      showSnackbar(
+        message: "Error selecting printer: $e",
+        isError: true,
+      );
+    }
+  }
+
+  Future<bool> _connectToPrinter() async {
+    if (_selectedPrinter == null) {
+      showSnackbar(
+        message: "Please select a printer first.",
+        isError: true,
+      );
+      return false;
+    }
+
+    try {
+      setState(() {
+        _isPrinting = true;
+      });
+
+      // Check if already connected
+      bool? isConnected = await bluetooth.isConnected;
+      if (isConnected == true) {
+        await bluetooth.disconnect();
+        await Future.delayed(Duration(milliseconds: 500));
+      }
+
+      // Connect with timeout
+      final Completer<bool> connectionCompleter = Completer<bool>();
+
+      // Set a timeout for connection
+      Future.delayed(Duration(seconds: 10), () {
+        if (!connectionCompleter.isCompleted) {
+          connectionCompleter.complete(false);
+        }
+      });
+
+      try {
+        await bluetooth.connect(_selectedPrinter!);
+        if (!connectionCompleter.isCompleted) {
+          connectionCompleter.complete(true);
+        }
+      } catch (error) {
+        if (!connectionCompleter.isCompleted) {
+          connectionCompleter.complete(false);
+        }
+      }
+
+      bool connected = await connectionCompleter.future;
+
+      if (!connected) {
+        showSnackbar(
+          message: "Connection timeout. Please try again.",
+          isError: true,
+        );
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      log('Connection error: $e');
+      showSnackbar(
+        message: "Failed to connect to printer: $e",
+        isError: true,
+      );
+      return false;
+    }
+  }
+
+  Future<void> printReceipt({
+    required String salesCode,
+    required String tradeName,
+    required String buildingName,
+    required String blockName,
+    required String roomName,
+    required String bottleGiven,
+    required String paidDeposit,
+    required String amount,
+    required String customerTRN,
+  }) async {
+    if (!await _connectToPrinter()) {
+      setState(() {
+        _isPrinting = false;
+      });
+      return;
+    }
+
+    try {
+      if (!await _connectToPrinter()) {
+        setState(() {
+          _isPrinting = false;
+        });
+        return;
+      }
+
+      try {
+        // Header
+        bluetooth.printNewLine();
+
+        // Header
+        bluetooth.printCustom("Al Marwa Water", 4, 1);
+        bluetooth.printNewLine();
+        bluetooth.printCustom("TRN: $customerTRN", 1, 1);
+        bluetooth.printCustom("Phone: +971-12-1234567", 1, 1);
+        bluetooth.printNewLine();
+        bluetooth.printCustom("--------------------------------", 1, 1);
+        bluetooth.printNewLine();
+
+        bluetooth.printCustom("Sales Code #: $salesCode", 1, 0);
+        bluetooth.printCustom("Building #    : $buildingName", 1, 0);
+        bluetooth.printCustom("Trade Name        : $tradeName", 1, 0);
+        bluetooth.printCustom("block #        : $blockName", 1, 0);
+        bluetooth.printCustom("room #        : $roomName", 1, 0);
+        bluetooth.printCustom("bottle given        : $bottleGiven", 1, 0);
+        bluetooth.printCustom("paid deposit        : $paidDeposit ", 1, 0);
+
+        bluetooth.printCustom("amount        : $amount", 1, 0);
+
+        bluetooth.printNewLine();
+        // Footer
+        bluetooth.printCustom("--------------------------------", 1, 1);
+        bluetooth.printNewLine();
+
+        bluetooth.printCustom("Thank you for your purchase!", 1, 1);
+        bluetooth.printCustom("AL-MARWA", 2, 1);
+        bluetooth.printCustom("Downtown Dubai, UAE", 1, 1);
+
+        bluetooth.printNewLine();
+        bluetooth.paperCut();
+
+        // Add some delay before cutting
+        await Future.delayed(Duration(milliseconds: 500));
+        bluetooth.paperCut();
+
+        // Add delay before disconnecting
+        await Future.delayed(Duration(milliseconds: 500));
+        await bluetooth.disconnect();
+
+        showSnackbar(
+          message: "Receipt printed successfully!",
+          isError: false,
+        );
+      } catch (e) {
+        log('Print Error: $e');
+        showSnackbar(
+          message: "Printing failed: $e",
+          isError: true,
+        );
+
+        // Try to disconnect if there was an error
+        try {
+          await bluetooth.disconnect();
+        } catch (disconnectError) {
+          log('Disconnect error: $disconnectError');
+        }
+      } finally {
+        setState(() {
+          _isPrinting = false;
+        });
+      }
+
+      // Add some delay before cutting
+      await Future.delayed(Duration(milliseconds: 500));
+      bluetooth.paperCut();
+
+      // Add delay before disconnecting
+      await Future.delayed(Duration(milliseconds: 500));
+      await bluetooth.disconnect();
+
+      showSnackbar(
+        message: "Receipt printed successfully!",
+        isError: false,
+      );
+    } catch (e) {
+      log('Print Error: $e');
+      showSnackbar(
+        message: "Printing failed: $e",
+        isError: true,
+      );
+
+      // Try to disconnect if there was an error
+      try {
+        await bluetooth.disconnect();
+      } catch (disconnectError) {
+        log('Disconnect error: $disconnectError');
+      }
+    } finally {
+      setState(() {
+        _isPrinting = false;
+      });
     }
   }
 
@@ -285,33 +549,71 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                           ],
                         ),
                   const SizedBox(height: 35),
-                  Center(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: color.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(32),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 40,
-                          vertical: 16,
+                  Row(
+                    children: [
+                      Flexible(
+                        flex: 2,
+                        child: CustomElevatedButton(
+                          onPressed: _selectPrinter,
+                          text: 'Select Printer',
                         ),
                       ),
-                      onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          AppRoutes.editCustomersScreen,
-                          arguments: widget.customer,
-                        );
-                      },
-                      child: Text(
-                        "Edit Details",
-                        style: textTheme.titleMedium?.copyWith(
-                          color: color.onPrimary,
+                      const SizedBox(width: 16),
+                      Flexible(
+                        flex: 2,
+                        child: CustomElevatedButton(
+                          onPressed: () {
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.editCustomersScreen,
+                              arguments: widget.customer,
+                            );
+                          },
+                          text: "Edit Details",
                         ),
                       ),
-                    ),
+                    ],
                   ),
+                  const SizedBox(height: 10),
+                  CustomElevatedButton(
+                    text: _isPrinting ? 'Printing...' : 'Print',
+                    onPressed: _isPrinting
+                        ? () {}
+                        : () async {
+                            print("working");
+                            await printReceipt(
+                              amount: widget.customer.amount.isNotEmpty
+                                  ? widget.customer.amount
+                                  : "0",
+                              blockName: widget.customer.blockNo.isNotEmpty
+                                  ? widget.customer.blockNo
+                                  : "N/A",
+                              buildingName:
+                                  widget.customer.buildingName.isNotEmpty
+                                      ? widget.customer.buildingName
+                                      : "N/A",
+                              bottleGiven:
+                                  widget.customer.bottleGiven.isNotEmpty
+                                      ? widget.customer.bottleGiven
+                                      : "0",
+                              customerTRN: widget.customer.trnNumber.isNotEmpty
+                                  ? widget.customer.trnNumber
+                                  : "N/A",
+                              paidDeposit:
+                                  widget.customer.paidDeposit.isNotEmpty
+                                      ? widget.customer.paidDeposit
+                                      : "0",
+                              roomName: widget.customer.roomNo.isNotEmpty
+                                  ? widget.customer.roomNo
+                                  : "N/A",
+                              tradeName: widget.customer.tradeName.isNotEmpty
+                                  ? widget.customer.tradeName
+                                  : "N/A",
+                              salesCode: widget.customer.customerCode,
+                            );
+                          },
+                  ),
+                  const SizedBox(height: 35),
                 ],
               ),
             ),
