@@ -21,6 +21,9 @@ class HiveBottleIssue {
   @HiveField(5)
   final String saleUserId;
 
+  @HiveField(6)
+  final String date;
+
   HiveBottleIssue({
     required this.customerId,
     required this.quantity,
@@ -28,6 +31,7 @@ class HiveBottleIssue {
     required this.block,
     required this.room,
     required this.saleUserId,
+    required this.date,
   });
 
   Map<String, dynamic> toJson() {
@@ -38,6 +42,7 @@ class HiveBottleIssue {
       "block": block,
       "room": room,
       "sale_user_id": saleUserId,
+      "date": date,
     };
   }
 }

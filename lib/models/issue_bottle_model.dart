@@ -26,6 +26,7 @@ class BottleIssueData {
   final String block;
   final String room;
   final String saleUserId;
+  final String date;
   final String createdAt;
   final String updatedAt;
 
@@ -37,6 +38,7 @@ class BottleIssueData {
     required this.block,
     required this.room,
     required this.saleUserId,
+    required this.date,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -50,6 +52,7 @@ class BottleIssueData {
       block: json['block'],
       room: json['room'],
       saleUserId: json['sale_user_id'],
+      date: json['date'],
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
     );

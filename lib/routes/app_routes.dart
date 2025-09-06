@@ -3,6 +3,7 @@ import 'package:al_marwa_water_app/models/customers_model.dart';
 import 'package:al_marwa_water_app/routes/fade_page_transition.dart';
 import 'package:al_marwa_water_app/views/auth/login_screen.dart';
 import 'package:al_marwa_water_app/views/bills/bill_history.dart';
+import 'package:al_marwa_water_app/views/bills/bottle_history_screen.dart';
 import 'package:al_marwa_water_app/views/bills/credit_bills_history_screen.dart';
 import 'package:al_marwa_water_app/views/bills/bills_screen.dart';
 import 'package:al_marwa_water_app/views/bills/credit_bills_screen.dart';
@@ -30,6 +31,7 @@ class AppRoutes {
   static const String previewScreen = '/preview-screen';
   static const String editBillScreen = '/edit-bill-screen';
   static const String editCustomersScreen = '/edit-customers-screen';
+  static const String bottleHistoryScreen = '/bottle-history-screen';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -75,6 +77,9 @@ class AppRoutes {
 
       case customersScreen:
         return FadePageRoute(page: CustomersScreen(), settings: settings);
+
+      case bottleHistoryScreen:
+        return FadePageRoute(page: BottleHistoryScreen(), settings: settings);
 
       case editCustomersScreen:
         final customer = settings.arguments as CustomerData;

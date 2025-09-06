@@ -1094,42 +1094,46 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _currentIndex == 0
-                    ? Expanded(
-                        child: CustomElevatedButton(
-                          text: "Next",
-                          onPressed: () {
-                            if (_formKey1.currentState!.validate()) {
-                              if (selectedPayTypeId == null) {
-                                showSnackbar(
-                                  message: "Please select a payment type",
-                                  isError: true,
-                                );
-                              } else {
+                Row(
+                  children: [
+                    _currentIndex == 0
+                        ? Expanded(
+                            child: CustomElevatedButton(
+                              text: "Next",
+                              onPressed: () {
+                                if (_formKey1.currentState!.validate()) {
+                                  if (selectedPayTypeId == null) {
+                                    showSnackbar(
+                                      message: "Please select a payment type",
+                                      isError: true,
+                                    );
+                                  } else {
+                                    setState(() {
+                                      _currentIndex++;
+                                    });
+                                  }
+                                } else {
+                                  showSnackbar(
+                                    message: "Please fill all required fields",
+                                    isError: true,
+                                  );
+                                }
+                              },
+                            ),
+                          )
+                        : Expanded(
+                            child: CustomElevatedButton(
+                              text: "Previous",
+                              onPressed: () {
                                 setState(() {
-                                  _currentIndex++;
+                                  _currentIndex--;
                                 });
-                              }
-                            } else {
-                              showSnackbar(
-                                message: "Please fill all required fields",
-                                isError: true,
-                              );
-                            }
-                          },
-                        ),
-                      )
-                    : Expanded(
-                        child: CustomElevatedButton(
-                          text: "Previous",
-                          onPressed: () {
-                            setState(() {
-                              _currentIndex--;
-                            });
-                          },
-                        ),
-                      ),
-               const SizedBox(height: 40),
+                              },
+                            ),
+                          ),
+                  ],
+                ),
+                const SizedBox(height: 40),
               ],
             ),
           ),

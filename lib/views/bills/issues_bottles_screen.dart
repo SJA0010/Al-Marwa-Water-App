@@ -12,6 +12,7 @@ import 'package:al_marwa_water_app/widgets/custom_elevated_button.dart';
 import 'package:al_marwa_water_app/widgets/custom_textform_field.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:loader_overlay/loader_overlay.dart';
 import 'package:provider/provider.dart';
 
@@ -24,7 +25,8 @@ class IssuesBottlesScreen extends StatefulWidget {
 
 class _IssuesBottlesScreenState extends State<IssuesBottlesScreen> {
   final _formKey = GlobalKey<FormState>();
-
+  final TextEditingController dateController = TextEditingController();
+  final TextEditingController newdateController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _buildingNameController = TextEditingController();
   final TextEditingController _blockController = TextEditingController();
@@ -132,6 +134,8 @@ class _IssuesBottlesScreenState extends State<IssuesBottlesScreen> {
                       child: Column(
                         children: [
                           SizedBox(height: 50),
+                          _buildDateField(context),
+                          const SizedBox(height: 16),
                           Consumer<CustomerController>(
                             builder: (context, customerController, _) {
                               final allCustomers = customerController.customers;
@@ -147,6 +151,15 @@ class _IssuesBottlesScreenState extends State<IssuesBottlesScreen> {
                                 selectedItem: selectedCustomer,
                                 itemAsString: (CustomerData? customer) {
                                   if (customer == null) return '';
+                                  // Hide customerCode in the selected item display
+                                  if (selectedCustomer != null &&
+                                      customer.id == selectedCustomer!.id) {
+                                    // Only show name, building, room, block (no code)
+                                    return customer.personName == "N/A"
+                                        ? ''
+                                        : '${customer.buildingName} - ${customer.personName} ${customer.roomNo}- ${customer.blockNo}';
+                                  }
+                                  // For dropdown search, show code for clarity
                                   return customer.personName == "N/A"
                                       ? customer.customerCode
                                       : '${customer.customerCode}. ${customer.buildingName} - ${customer.personName} ${customer.roomNo}- ${customer.blockNo}';
@@ -243,6 +256,7 @@ class _IssuesBottlesScreenState extends State<IssuesBottlesScreen> {
                                     ),
                                   ),
                                   itemBuilder: (context, item, isSelected) {
+                                    // Always show code in dropdown list
                                     final displayText = item.personName == "N/A"
                                         ? item.customerCode
                                         : '${item.customerCode}. ${item.personName}';
@@ -301,11 +315,22 @@ class _IssuesBottlesScreenState extends State<IssuesBottlesScreen> {
                                 context.loaderOverlay.show();
 
                                 if (selectedCustomerId != null) {
+                                  DateTime selectedDate = DateFormat(
+                                    'dd/MM/yyyy',
+                                  ).parse(dateController.text);
+
+                                  // Convert to ISO string and split
+                                  newdateController.text = selectedDate
+                                      .toIso8601String()
+                                      .split('T')
+                                      .first;
+
                                   Provider.of<BottleController>(
                                     context,
                                     listen: false,
                                   ).issueBottle(
                                     context,
+                                    date: newdateController.text,
                                     customerId: selectedCustomerId!,
                                     quantity: _quantityController.text,
                                     buildingName: _buildingNameController.text,
@@ -335,16 +360,86 @@ class _IssuesBottlesScreenState extends State<IssuesBottlesScreen> {
                               }
                             },
                           ),
-                          SizedBox(height: 50),
+                          SizedBox(height: 20),
                         ],
                       ),
                     ),
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: CustomElevatedButton(
+                    text: "Bottle History",
+                    onPressed: () {
+                      Navigator.pushNamed(
+                          context, AppRoutes.bottleHistoryScreen);
+                    },
+                  ),
+                ),
+                SizedBox(height: 50),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDateField(BuildContext context) {
+    if (dateController.text.isEmpty) {
+      dateController.text = DateFormat('dd/MM/yyyy').format(DateTime.now());
+    }
+    return SizedBox(
+      child: TextFormField(
+        controller: dateController,
+        readOnly: true,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        decoration: InputDecoration(
+          suffixIcon: Icon(
+            Icons.calendar_today,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          fillColor: Colors.white,
+          filled: true,
+          hintText: 'Select Date',
+          hintStyle: TextStyle(
+            color: Colors.grey[700],
+            fontSize: 12,
+            fontWeight: FontWeight.w400,
+          ),
+          contentPadding: const EdgeInsets.all(12),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.primary,
+              width: 2,
+            ),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.primary,
+              width: 1,
+            ),
+          ),
+        ),
+        onTap: () async {
+          final pickedDate = await showDatePicker(
+            context: context,
+            initialDate: DateTime.now(),
+            firstDate: DateTime.now(),
+            lastDate: DateTime(2100),
+          );
+          if (pickedDate != null) {
+            dateController.text = DateFormat('dd/MM/yyyy').format(pickedDate);
+          }
+        },
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Please select a date';
+          }
+          return null;
+        },
       ),
     );
   }

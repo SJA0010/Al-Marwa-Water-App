@@ -23,6 +23,7 @@ class HiveBottleIssueAdapter extends TypeAdapter<HiveBottleIssue> {
       block: fields[3] as String,
       room: fields[4] as String,
       saleUserId: fields[5] as String,
+      date: fields[6] as String,
     );
   }
 
@@ -41,7 +42,9 @@ class HiveBottleIssueAdapter extends TypeAdapter<HiveBottleIssue> {
       ..writeByte(4)
       ..write(obj.room)
       ..writeByte(5)
-      ..write(obj.saleUserId);
+      ..write(obj.saleUserId)
+      ..writeByte(6)
+      ..write(obj.date);
   }
 
   @override

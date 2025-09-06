@@ -14,7 +14,7 @@ class BottleIssueRepository {
       return BottleIssueModel.fromJson(response);
     } catch (e) {
       log("❌ Bottle issue error: $e");
-      showSnackbar(message: "Failed to issue bottle: $e", isError: true);
+      showSnackbar(message: "Failed to issue bottle", isError: true);
       rethrow;
     }
   }

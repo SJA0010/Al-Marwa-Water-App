@@ -36,6 +36,7 @@ class BottleController with ChangeNotifier {
     required String quantity,
     required String buildingName,
     required String block,
+    required String date,
     required String room,
     required String saleUserId,
   }) async {
@@ -44,6 +45,7 @@ class BottleController with ChangeNotifier {
     context.loaderOverlay.show();
 
     final data = {
+      "date": date,
       "customer_id": customerId,
       "quantity": quantity,
       "building_name": buildingName,
@@ -68,6 +70,7 @@ class BottleController with ChangeNotifier {
             e.quantity == quantity &&
             e.buildingName == buildingName &&
             e.block == block &&
+            e.date == date &&
             e.room == room &&
             e.saleUserId == saleUserId);
 
@@ -77,6 +80,7 @@ class BottleController with ChangeNotifier {
               message: "⚠️ Order already saved offline", isError: true);
         } else {
           box.add(HiveBottleIssue(
+            date: date,
             customerId: customerId,
             quantity: quantity,
             buildingName: buildingName,
